@@ -2,11 +2,18 @@ FROM alpine:latest
 
 RUN apk update && apk upgrade
 RUN apk add --no-cache gcc python3-dev musl-dev linux-headers git py3-pip ffmpeg
-RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/ megatools
+# Install megatools from edge/testing repo and verify it exists
+RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/ megatools && \
+    which megadl && \
+    which megaget && \
+    which megals
 
 WORKDIR /app/
 COPY . .
-RUN python3 -m venv venv
-RUN venv/bin/pip install -U -r requirements.txt
+RUN pip3 install -U -r requirements.txt
 
-CMD ["venv/bin/python3", "-m", "megadl"]
+# Print debug info
+RUN python3 --version && \
+    ls -la /app/megadl/modules/
+
+CMD ["python3", "-m", "megadl"]
