@@ -45,7 +45,7 @@ class MeganzClient(Client):
     tmp_loc = None
     database = CypherDB() if os.getenv("MONGO_URI") else None
 
-    def __init__(self, plugin_path=None):
+    def __init__(self):
         # set DOWNLOAD_LOCATION variable
         # if USE_ENV is True it'll use currend dir + NexaBots
         # otherwise use location defined in .env file by user
@@ -67,11 +67,9 @@ class MeganzClient(Client):
         if not os.path.isdir(self.tmp_loc):
             os.makedirs(self.tmp_loc)
 
-        # Determine plugins path
-        plugins_path = "megadl/modules"
-        if plugin_path:
-            plugins_path = f"{plugin_path}/modules"
-            print(f"> Using absolute plugin path: {plugins_path}")
+        # Determine plugins path - use Python module notation
+        plugins_path = "megadl.modules"
+        print(f"> Using module notation for plugins: {plugins_path}")
             
         # Initializing pyrogram
         print("> Initializing client")
