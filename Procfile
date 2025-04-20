@@ -1,1 +1,1 @@
-worker: python3 -m megadl
+worker: python3 __main__.py
