@@ -53,3 +53,16 @@ async def help_msg(_: CypherClient, msg: Message):
 **Made with ❤️ by @NexaBotsUpdates**
       """
     )
+
+# Add a debug handler to see if the bot receives any messages
+@CypherClient.on_message(filters.text & filters.private)
+async def debug_handler(client, message):
+    print(f"> Debug - Received message: {message.text}")
+    
+    # If the message looks like a Mega link but wasn't caught by the regex
+    if "mega.nz" in message.text or "mega.co.nz" in message.text:
+        print(f"> Debug - This looks like a Mega link: {message.text}")
+        # Try to manually trigger the download handler
+        await message.reply(
+            "I detected what might be a Mega link. Please make sure it's in the format: https://mega.nz/file/... or https://mega.nz/folder/..."
+        )
