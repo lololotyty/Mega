@@ -24,8 +24,11 @@ RUN echo "Python version:" && python3 --version && \
     ls -la /app/megadl/modules && \
     echo "Megatools version:" && megadl --version
 
+# Set permissions for executable scripts
+RUN chmod +x /app/megadl/__main__.py
+
 # Set environment variable to ensure module imports work
 ENV PYTHONPATH=/app
 
 # Run the bot
-CMD ["python3", "__main__.py"]
+CMD ["python3", "-m", "megadl"]
