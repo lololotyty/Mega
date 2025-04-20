@@ -158,6 +158,11 @@ class MeganzClient(Client):
         async def cy_run(client: Client, msg: Message | CallbackQuery):
             can_use = False
             # use message of the query if it's a callback query
+            # Check if from_user exists first
+            if not msg.from_user:
+                # Skip messages without a user (e.g., service messages, channel posts)
+                return
+            
             uid = msg.from_user.id
 
             try:
@@ -241,16 +246,25 @@ class MeganzClient(Client):
             text (str): Text to edit or reply with
             reply (bool, optional): Whether to reply to the msg or not. Defaults to False.
         """
-        if isinstance(msg, Message):
-            if reply:
+        try:
+            if isinstance(msg, Message):
+                if reply:
+                    await msg.reply(text)
+                else:
+                    await msg.edit(text, **kwargs)
+            else:
+                if reply:
+                    await msg.message.reply(text, **kwargs)
+                else:
+                    await msg.message.edit_text(text, **kwargs)
+        except errors.MessageIdInvalid:
+            # Message might be deleted or too old to edit, try to send a new message
+            if isinstance(msg, Message):
                 await msg.reply(text)
             else:
-                await msg.edit(text, **kwargs)
-        else:
-            if reply:
                 await msg.message.reply(text, **kwargs)
-            else:
-                await msg.message.edit_text(text, **kwargs)
+        except Exception as e:
+            logging.warning(f"Failed to edit or reply to message: {e}")
 
     async def ask(self, chat_id: int, text: str, *args, **kwargs):
         await self.send_message(chat_id, text, *args, **kwargs)
