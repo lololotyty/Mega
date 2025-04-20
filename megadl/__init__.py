@@ -5,10 +5,16 @@
 
 import os
 import logging
+import sys
 
 # start msg
 print("Mega.nz Bot - Cypher is starting...")
 
+# Make sure the directory is in the Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+print(f"> Added {script_dir} to Python path")
 
 # loading config
 from dotenv import load_dotenv
@@ -19,8 +25,14 @@ if os.path.isfile('.env'):
 else:
     logging.warning("WARNING: No .env file found")
 
-# client
-from .helpers.cypher import MeganzClient
-import os
-# Initialize client
-CypherClient: "MeganzClient" = MeganzClient()
+# Import stuff to make sure it's available
+print("> Initializing modules...")
+try:
+    # First import client to ensure it's defined
+    from .helpers.cypher import MeganzClient
+    
+    # Initialize client
+    CypherClient: "MeganzClient" = MeganzClient()
+    print("> Client initialized successfully")
+except Exception as e:
+    logging.error(f"Error initializing client: {e}")
