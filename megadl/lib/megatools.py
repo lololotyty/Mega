@@ -85,25 +85,56 @@ class MegaTools:
             - message_id: integer - Id of the progress message
             - path (optional): string - Custom path to where the files need to be downloaded
         """
-        # Public link download: Supports both file and folders
-        if Regexes.pub_file_folder.match(url):
-            cmd = f'megadl {self.config} --path "{path}" {url}'
+        logging.info(f"Starting download for user {user_id}: {url}")
+        
+        if not url or len(url) < 5:
+            logging.error(f"Invalid URL provided: {url}")
+            return []
+            
+        try:
+            # Public link download: Supports both file and folders
+            if Regexes.pub_file_folder.match(url):
+                cmd = f'megadl {self.config} --path "{path}" {url}'
+                logging.info(f"Using megadl command for URL: {url}")
 
-        # Private link downloads: Supports both file and folders
-        elif Regexes.prv_file_folder.match(url):
-            cmd = f'megaget --no-ask-password {self.config} --path "{path}" {url}'
+            # Private link downloads: Supports both file and folders
+            elif Regexes.prv_file_folder.match(url):
+                cmd = f'megaget --no-ask-password {self.config} --path "{path}" {url}'
+                logging.info(f"Using megaget command for URL: {url}")
 
-        else:
-            cmd = f'megacopy --no-ask-password {self.config} -l "{path}" -r "{url}" --download'
-        await run_partial(
-            self.__shellExec,
-            cmd,
-            user_id=user_id,
-            chat_id=chat_id,
-            msg_id=message_id,
-            **kwargs,
-        )
-        return listfiles(path)
+            else:
+                cmd = f'megacopy --no-ask-password {self.config} -l "{path}" -r "{url}" --download'
+                logging.info(f"Using megacopy command for URL: {url}")
+                
+            # First try to get info about the file/folder
+            try:
+                info = await self.get_info(url)
+                if info and info[0] != "undefined":
+                    logging.info(f"File/folder info: Size={info[0]}, Name={info[1]}")
+                    # Send file info to the user
+                    await self.client.edit_message_text(
+                        chat_id, 
+                        message_id, 
+                        f"`Found content: {info[1]} ({info[0]})\nStarting download...`",
+                        **kwargs
+                    )
+            except Exception as e:
+                logging.warning(f"Failed to get file info: {e}")
+            
+            await run_partial(
+                self.__shellExec,
+                cmd,
+                user_id=user_id,
+                chat_id=chat_id,
+                msg_id=message_id,
+                **kwargs,
+            )
+            file_list = listfiles(path)
+            logging.info(f"Download completed. Found {len(file_list)} files.")
+            return file_list
+        except Exception as e:
+            logging.error(f"Download failed for user {user_id}: {str(e)}")
+            raise
 
     async def upload(
         self,
