@@ -51,6 +51,11 @@ async def dl_from_cb(client: CypherClient, query: CallbackQuery):
     qcid = query.message.chat.id
     qusr = query.from_user.id
     dtmp = client.glob_tmp.get(qusr)
+    
+    # Check if dtmp exists
+    if not dtmp:
+        return await query.edit_message_text("Session expired. Please send the link again.")
+        
     url = dtmp[0]
     dlid = dtmp[1]
 
@@ -76,37 +81,53 @@ async def dl_from_cb(client: CypherClient, query: CallbackQuery):
     resp = await query.edit_message_text(
         "`Your download is starting 📥...`", reply_markup=None
     )
+    
+    # Mark user as having a running process
+    client.mega_running[qusr] = True
 
     cli = MegaTools(client, conf)
 
-    f_list = None
-    f_list = await cli.download(
-        url,
-        qusr,
-        qcid,
-        resp.id,
-        path=dlid,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("Cancel ❌", callback_data=f"cancelqcb-{qusr}")],
-            ]
-        ),
-    )
-    if not f_list:
-        return
+    try:
+        f_list = await cli.download(
+            url,
+            qusr,
+            qcid,
+            resp.id,
+            path=dlid,
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("Cancel ❌", callback_data=f"cancelqcb-{qusr}")],
+                ]
+            ),
+        )
+        if not f_list:
+            await query.edit_message_text("`Failed to download content. Link might be invalid or access denied.`")
+            await client.full_cleanup(dlid, qusr)
+            return
 
-    await query.edit_message_text("`Successfully downloaded the content 🥳`")
-    # update download count
-    if client.database:
-        await client.database.plus_fl_count(qusr, downloads=len(f_list))
-    # Send file(s) to the user
-    await resp.edit("`Trying to upload now 📤...`")
-    await client.send_files(
-        f_list,
-        qcid,
-        resp.id,
-        reply_to_message_id=_mid,
-        caption=f"**Join @NexaBotsUpdates ❤️**",
-    )
-    await client.full_cleanup(dlid, qusr)
-    await resp.delete()
+        await query.edit_message_text("`Successfully downloaded the content 🥳`")
+        # update download count
+        if client.database:
+            await client.database.plus_fl_count(qusr, downloads=len(f_list))
+        # Send file(s) to the user
+        await resp.edit("`Trying to upload now 📤...`")
+        await client.send_files(
+            f_list,
+            qcid,
+            resp.id,
+            reply_to_message_id=_mid,
+            caption=f"**Join @NexaBotsUpdates ❤️**",
+        )
+    except Exception as e:
+        error_msg = f"**Failed to process your request:** `{str(e)[:200]}`"
+        await client.send_message(qcid, error_msg)
+        # Log the full error
+        if client.log_chat:
+            await client.send_message(client.log_chat, f"**#ERROR**\n\n**User:** `{qusr}`\n**URL:** `{url}`\n**Error:** `{str(e)}`")
+    finally:
+        # Always clean up resources
+        await client.full_cleanup(dlid, qusr)
+        try:
+            await resp.delete()
+        except:
+            pass
