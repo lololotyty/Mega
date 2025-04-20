@@ -22,6 +22,5 @@ else:
 # client
 from .helpers.cypher import MeganzClient
 import os
-# Add absolute module path for Heroku
-MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
-CypherClient: "MeganzClient" = MeganzClient(plugin_path=MODULE_PATH)
+# Initialize client
+CypherClient: "MeganzClient" = MeganzClient()
