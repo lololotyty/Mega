@@ -28,4 +28,4 @@ RUN echo "Python version:" && python3 --version && \
 ENV PYTHONPATH=/app
 
 # Run the bot
-CMD ["python3", "-m", "megadl"]
+CMD ["python3", "__main__.py"]
