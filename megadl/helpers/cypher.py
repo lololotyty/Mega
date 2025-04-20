@@ -9,6 +9,8 @@ import asyncio
 import logging
 import requests
 import functools
+import importlib.util
+import sys
 
 from typing import Callable
 from asyncio import sleep as xsleep
@@ -70,6 +72,31 @@ class MeganzClient(Client):
         # Determine plugins path - use Python module notation
         plugins_path = "megadl.modules"
         print(f"> Using module notation for plugins: {plugins_path}")
+        
+        # Debug plugins directory
+        # Check if modules directory exists
+        modules_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "modules")
+        print(f"> Checking modules directory: {modules_dir}, exists: {os.path.exists(modules_dir)}")
+        if os.path.exists(modules_dir):
+            module_files = [f for f in os.listdir(modules_dir) if f.endswith('.py')]
+            print(f"> Found module files: {module_files}")
+            
+            # Make sure modules can be imported
+            for module_file in module_files:
+                module_name = f"megadl.modules.{module_file[:-3]}"
+                if module_name != "megadl.modules.__init__":
+                    try:
+                        # Try to manually import the module
+                        spec = importlib.util.find_spec(module_name)
+                        if spec:
+                            module = importlib.util.module_from_spec(spec)
+                            sys.modules[module_name] = module
+                            spec.loader.exec_module(module)
+                            print(f"> Successfully imported {module_name}")
+                        else:
+                            print(f"> Could not find spec for {module_name}")
+                    except Exception as e:
+                        print(f"> Error importing {module_name}: {str(e)}")
             
         # Initializing pyrogram
         print("> Initializing client")
@@ -81,6 +108,24 @@ class MeganzClient(Client):
             plugins=dict(root=plugins_path),
             sleep_threshold=10,
         )
+
+        # Manually load modules if Pyrogram's plugin system fails
+        print("> Manually loading modules...")
+        modules_loaded = False
+        try:
+            from megadl.modules import mega_dl, mega_up, generals, callbacks, bonus, auth, admin
+            
+            # Register message handlers directly
+            self.add_handler(mega_dl.CypherClient.on_message.__self__)
+            self.add_handler(mega_up.CypherClient.on_message.__self__)
+            self.add_handler(generals.CypherClient.on_message.__self__)
+            self.add_handler(callbacks.CypherClient.on_callback_query.__self__)
+            self.add_handler(admin.CypherClient.on_message.__self__)
+            
+            print("> Successfully loaded modules manually")
+            modules_loaded = True
+        except Exception as e:
+            print(f"> Error manually loading modules: {str(e)}")
 
         # Initializing mongodb
         print("> Initializing database")
